@@ -137,7 +137,7 @@ GitHub Issues (langchain-ai/langchain)
 cp .env.example .env
 # .env 파일에 아래 값 입력
 # GITHUB_TOKEN=ghp_...
-# OPENAI_API_KEY=sk-...
+# GEMINI_API_KEY=sk-...
 # DATABASE_URL=postgresql://langchain:langchain@localhost:5432/langchain_ai
 ```
 
@@ -307,8 +307,8 @@ python -m eval.compare
 |------|------|
 | API 서버 | FastAPI, Uvicorn |
 | 벡터 DB | PostgreSQL + pgvector |
-| 임베딩 | OpenAI text-embedding-3-small |
-| LLM | GPT-4o-mini |
+| 임베딩 | Gemini |
+| LLM | Gemini |
 | 리랭킹 | cross-encoder/ms-marco-MiniLM-L-6-v2 |
 | 데이터 수집 | GitHub REST API |
 | UI | Streamlit |
