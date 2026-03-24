@@ -21,14 +21,15 @@ LangChain을 쓰다 보면 공식 문서에 없는 에러를 자주 만납니다
 **결과:** 벡터 단독 대비 Hit@3 +18.4%, MRR +36.8% 향상 (키워드 매칭 기준). LLM 리랭커 비교 수치는 `python -m eval.compare` 참조.
 
 ---
+## UI 스크린샷
+
+<img width="971" height="517" alt="image" src="https://github.com/user-attachments/assets/d7bf4a87-8c28-4b44-95e1-968aab4b005a" />
 
 ## 데모
 
 https://github.com/user-attachments/assets/4cf20962-5e2c-48a1-8950-ef09874c978d
 
-## 스크린샷
 
-![Streamlit UI](assets/screenshot.png)
 
 ---
 
