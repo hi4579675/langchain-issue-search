@@ -13,7 +13,7 @@ REPO = "langchain-ai/langchain"
 
 def fetch_issues(client: GitHubClient,
                  label: str = "bug",
-                 max_pages: int = 50) -> Generator[RawIssue, None, None]:
+                 max_pages: int = 100) -> Generator[RawIssue, None, None]:
     """
     closed bug 이슈를 페이지 단위로 가져옴
     Java의 Iterator<RawIssue> 와 동일한 개념

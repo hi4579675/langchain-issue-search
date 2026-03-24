@@ -31,7 +31,7 @@ class GitHubClient:
         return resp.json()
 
     def _wait_if_needed(self):
-        if self._remaining < 10:
+        if self._remaining < 100:
             wait = max(0, self._reset_at - time.time()) + 1
             print(f"Rate limit 임박 — {wait:.0f}초 대기")
             time.sleep(wait)

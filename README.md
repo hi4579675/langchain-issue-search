@@ -1,6 +1,6 @@
 # LangChain Issue AI
 
-> LangChain GitHub 이슈 9200+개를 벡터화한 트러블슈팅 RAG 시스템
+> LangChain GitHub bug 이슈 3,600+개를 벡터화한 트러블슈팅 RAG 시스템
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green)
@@ -13,11 +13,11 @@
 
 LangChain을 쓰다 보면 공식 문서에 없는 에러를 자주 만납니다. GPT-4에 물어보면 "버전이 달라서 모른다"는 답변만 돌아오고, Stack Overflow엔 아직 답이 없는 경우도 많습니다.
 
-**문제:** 같은 에러를 겪은 개발자들의 이슈와 해결 과정이 GitHub에 수만 건 쌓여 있지만, 자연어로 검색하기 어렵습니다.
+**문제:** 같은 에러를 겪은 개발자들의 이슈와 해결 과정이 GitHub에 수천 건의 bug 이슈로 쌓여 있지만, 자연어로 검색하기 어렵습니다.
 
 **해결:** 이슈-솔루션 쌍을 수집·정제하여 벡터 DB에 적재하고, 에러 메시지나 자연어 질문으로 검색하는 RAG 파이프라인을 구축했습니다.
 
-**결과:** vanilla GPT-4 대비 Hit@3 +78%, MRR +76% 달성.
+**결과:** 벡터 단독 대비 Hit@3 +18.4%, MRR +36.8% 향상 (키워드 매칭 기준). LLM 리랭커 비교 수치는 `python -m eval.compare` 참조.
 
 ---
 
@@ -27,7 +27,7 @@ LangChain을 쓰다 보면 공식 문서에 없는 에러를 자주 만납니다
 - **출처 링크 제공** — 어떤 이슈 번호에서 답변했는지 함께 반환
 - **코드블록 분리 청킹** — 코드와 텍스트를 별도 청크로 관리, 코드 예제 우선 반환
 - **Hybrid Reranking** — 벡터 유사도 × 키워드 매칭 × solution 가중치 × 최신성 점수
-- **베이스라인 비교** — vanilla GPT-4 응답과 지표 비교
+- **베이스라인 비교** — 검색 구성별 ablation + Gemini Flash 리랭커와 지표 비교
 - **자동 동기화** — `/sync` API로 최신 이슈 주기적 반영
 
 ---
@@ -103,28 +103,33 @@ GitHub Issues (langchain-ai/langchain)
 
 ### 4. GitHub API Rate Limiting 자동 제어
 
-GitHub는 인증 요청을 시간당 5,000개로 제한합니다. 매 응답의 `X-RateLimit-Remaining` / `X-RateLimit-Reset` 헤더를 파싱하여, 잔여 요청이 10개 미만이 되면 리셋 시각까지 자동 대기합니다. 별도 설정 없이 대량 수집 중 rate limit 초과 오류 없이 안정적으로 동작합니다.
+GitHub는 인증 요청을 시간당 5,000개로 제한합니다. 매 응답의 `X-RateLimit-Remaining` / `X-RateLimit-Reset` 헤더를 파싱하여, 잔여 요청이 100개 미만이 되면 리셋 시각까지 자동 대기합니다. 별도 설정 없이 대량 수집 중 rate limit 초과 오류 없이 안정적으로 동작합니다.
 
 ---
 
 ## 평가 결과
 
-1,448개 이슈에서 무작위 샘플링한 100개 QA 쌍으로 측정.
+3,606개 인덱싱된 이슈에서 무작위 샘플링한 200개 QA 쌍으로 측정.
 이슈 질문 텍스트를 query, 해당 issue_number를 정답으로 사용.
 
 ### 검색 구성별 성능 비교 (`eval/compare.py`)
 
 | 구성 | Hit@3 | Hit@5 | MRR | NDCG@5 |
 |------|:---:|:---:|:---:|:---:|
-| A. 벡터 유사도만 (baseline) | 0.630 | 0.700 | 0.565 | 0.596 |
-| B. +키워드 매칭 | **0.680** | 0.700 | **0.645** | **0.657** |
-| C. +solution 가중치 | 0.680 | 0.700 | 0.630 | 0.646 |
-| D. +최신성 점수 (full hybrid) | 0.660 | 0.690 | 0.618 | 0.631 |
+| A. 벡터 유사도만 (baseline) | 0.680 | 0.775 | 0.584 | 0.623 |
+| B. +키워드 매칭 | **0.805** | **0.830** | **0.799** | **0.804** |
+| C. +solution 가중치 | 0.785 | 0.830 | 0.753 | 0.769 |
+| D. +최신성 점수 (full hybrid) | 0.785 | 0.825 | 0.742 | 0.761 |
+| E. Gemini 2.5 Flash 리랭커 | 0.660 | 0.720 | 0.616 | 0.642 |
+| F. Gemini Flash Lite 리랭커 | 0.545 | 0.585 | 0.525 | 0.540 |
+
+> E·F는 `GEMINI_API_KEY`만 있으면 실행됩니다. G(Groq)는 [console.groq.com](https://console.groq.com) 무료 가입 후 `GROQ_API_KEY` 설정 필요.
 
 > **분석:**
-> - 키워드 매칭이 가장 큰 성능 향상을 가져옴 (MRR +14%)
-> - solution 가중치는 Hit@3에 기여하나 MRR에서는 중립적
-> - 최신성 점수는 이 데이터셋에서 개선폭이 작음 — LangChain 이슈 특성상 오래된 이슈도 유효한 솔루션을 포함하는 경우가 많기 때문
+> - **키워드 매칭(B)이 최고 성능** — 벡터 단독 대비 Hit@3 +18.4%, MRR +36.8%
+> - solution 가중치·최신성 점수는 B 대비 소폭 하락 — 이 데이터셋에서 효과 제한적
+> - LLM 리랭커(E·F)는 baseline보다 낮음 — 단순 이슈 번호 선별 작업에서 추가 비용 대비 이득 없음
+>
 > 평가 스크립트: `python -m eval.compare`
 
 ---
@@ -159,7 +164,7 @@ docker-compose up -d postgres
 ```bash
 pip install -r requirements.txt
 python scripts/collect_and_index.py
-# 약 2,000개 이슈 수집 시 20~30분 소요 (GitHub rate limit 의존)
+# bug 라벨 closed 이슈 전체 수집 시 약 3,600개, 1~2시간 소요 (GitHub rate limit 의존)
 ```
 
 ### 4. API 서버 실행
@@ -205,7 +210,7 @@ langchain-issue-ai/
 ├── eval/                       # 평가 모듈
 │   ├── metrics.py              # Hit@k, MRR, NDCG
 │   ├── dataset.py              # 평가셋 구성
-│   └── compare.py              # GPT-4 베이스라인 비교
+│   └── compare.py              # 검색 구성 ablation + Gemini Flash 리랭커 비교
 │
 ├── frontend/
 │   └── app.py                  # Streamlit UI
@@ -265,7 +270,7 @@ GitHub에서 최신 이슈를 백그라운드로 동기화합니다.
 
 ```bash
 python -m eval.metrics   # Hit@k, MRR, NDCG 측정
-python -m eval.compare   # GPT-4 베이스라인 비교
+python -m eval.compare   # 검색 구성 ablation + Gemini Flash 리랭커 비교
 ```
 
 ---
